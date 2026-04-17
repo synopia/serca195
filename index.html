@@ -112,6 +112,18 @@
       z-index: 2;
     }
 
+    .wall.warning {
+      filter: brightness(1.2);
+    }
+
+    .wall.warning.left {
+      animation: wallShakeLeft 90ms linear infinite;
+    }
+
+    .wall.warning.right {
+      animation: wallShakeRight 90ms linear infinite;
+    }
+
     .wall.left {
       left: 0;
       transform: translateX(calc(-100% + var(--close, 0) * 100%));
@@ -120,6 +132,22 @@
     .wall.right {
       right: 0;
       transform: translateX(calc(100% - var(--close, 0) * 100%));
+    }
+
+    @keyframes wallShakeLeft {
+      0% { margin-left: 0px; }
+      25% { margin-left: -4px; }
+      50% { margin-left: 3px; }
+      75% { margin-left: -2px; }
+      100% { margin-left: 0px; }
+    }
+
+    @keyframes wallShakeRight {
+      0% { margin-right: 0px; }
+      25% { margin-right: -4px; }
+      50% { margin-right: 3px; }
+      75% { margin-right: -2px; }
+      100% { margin-right: 0px; }
     }
 
     /* Visuelle Mitte */
@@ -194,8 +222,8 @@
     <button id="resetBtn">Reset</button>
     <button id="pattern1">Pattern 1</button>
     <button id="pattern2">Pattern 2</button>
-    <button id="pattern3">Pattern 3</button>
-    <button id="pattern4">Pattern 4</button>
+    <button id="pattern3a">Pattern 3a</button>
+    <button id="pattern3b">Pattern 3b</button>
   </div>
 
   <div class="hint">
@@ -264,7 +292,7 @@
   // close = 1 -> komplett geschlossen
   function setWall(rowIndex, close) {
     const row = rows[rowIndex];
-    row.close = Math.max(0, Math.min(1, close));
+    row.close = Math.max(-1, Math.min(1, close));
     row.left.style.setProperty("--close", row.close);
     row.right.style.setProperty("--close", row.close);
   }
@@ -273,6 +301,18 @@
     const row = rows[rowIndex];
     row.left.style.transitionDuration = `${ms}ms`;
     row.right.style.transitionDuration = `${ms}ms`;
+  }
+
+  function setWarning(rowIndex, active) {
+    const row = rows[rowIndex];
+    row.left.classList.toggle("warning", active);
+    row.right.classList.toggle("warning", active);
+  }
+
+  async function telegraphWall(rowIndex, duration  = 400){
+    setWarning(rowIndex, true);
+    await sleep(duration);
+    setWarning(rowIndex, false);
   }
 
   function animateWall(rowIndex, to, duration = 700) {
@@ -284,7 +324,7 @@
 
   function resetWalls(duration = 250) {
     for (let i = 0; i < ROW_COUNT; i++) {
-      animateWall(i, 0, duration);
+      animateWall(i, 0.2, duration);
     }
   }
 
@@ -331,7 +371,10 @@
     await Promise.all(
             steps.map(step => {
               return new Promise(resolve => {
-                setTimeout(() => {
+                setTimeout(async () => {
+                  if(step.warn && step.warn>0){
+                    await telegraphWall(step.row, step.warn);
+                  }
                   animateWall(step.row, step.to, step.duration ?? 600);
                   resolve();
                 }, step.t);
@@ -342,62 +385,63 @@
     return performance.now() - start;
   }
 
+  function closeWithTelegraph(rowIndex, start) {
+    return [
+      { row: rowIndex, t: start,     to: 0.1, duration: 300 },
+      { row: rowIndex, t: start+300, to: 0.05, warn:1650, duration: 50 },
+      { row: rowIndex, t: start+2000, to: 1, duration: 100 },
+      { row: rowIndex, t: start+3000, to: 0.2, duration: 1200 },
+    ]
+  }
   async function runPattern1() {
     const steps = [
-      { t: 0, row: 0, to: 1, duration: 500 },
-      { t: 0, row: 3, to: 1, duration: 500 },
-      { t: 1000, row: 2, to: 1, duration: 500 },
-      { t: 1000, row: 5, to: 1, duration: 500 },
-      { t: 2000, row: 1, to: 1, duration: 500 },
-      { t: 2000, row: 4, to: 1, duration: 500 },
-      { t: 2000, row: 0, to: 0, duration: 500 },
-      { t: 2000, row: 3, to: 0, duration: 500 },
+            ...closeWithTelegraph(0, 0),
+            ...closeWithTelegraph(2, 700),
+            ...closeWithTelegraph(1, 1700),
+            ...closeWithTelegraph(3, 0),
+            ...closeWithTelegraph(5, 700),
+            ...closeWithTelegraph(4, 1700),
+
     ];
 
     await runPattern(steps);
   }
   async function runPattern2() {
     const steps = [
-      { t: 0, row: 1, to: 1, duration: 500 },
-      { t: 0, row: 3, to: 1, duration: 500 },
-      { t: 0, row: 5, to: 1, duration: 500 },
-      { t: 1000, row: 0, to: 1, duration: 250 },
-      { t: 1000, row: 1, to: 0, duration: 250 },
-      { t: 1000, row: 2, to: 1, duration: 250 },
-      { t: 1000, row: 3, to: 0, duration: 250 },
-      { t: 1000, row: 4, to: 1, duration: 250 },
-      { t: 1000, row: 5, to: 0, duration: 250 },
-      { t: 2000, row: 0, to: 0, duration: 250 },
-      { t: 2000, row: 1, to: 1, duration: 250 },
-      { t: 2000, row: 2, to: 0, duration: 250 },
-      { t: 2000, row: 3, to: 1, duration: 250 },
-      { t: 2000, row: 4, to: 0, duration: 250 },
-      { t: 2000, row: 5, to: 1, duration: 250 },
+      ...closeWithTelegraph(1, 0),
+      ...closeWithTelegraph(3, 0),
+      ...closeWithTelegraph(5, 0),
+      ...closeWithTelegraph(0, 2700),
+      ...closeWithTelegraph(2, 2700),
+      ...closeWithTelegraph(4, 2700),
+      ...closeWithTelegraph(1, 4900),
+      ...closeWithTelegraph(3, 4900),
+      ...closeWithTelegraph(5, 4900),
     ];
 
     await runPattern(steps);
   }
 
-  async function runPattern3() {
+  async function runPattern3a() {
     const steps = [
-      { t: 0, row: 0, to: 1, duration: 250 },
-      { t: 250, row: 1, to: 1, duration: 250 },
-      { t: 500, row: 2, to: 1, duration: 250 },
-      { t: 750, row: 3, to: 1, duration: 250 },
-      { t: 1000, row: 4, to: 1, duration: 250 },
+            ...closeWithTelegraph(0, 0),
+            ...closeWithTelegraph(1, 250),
+            ...closeWithTelegraph(2, 500),
+            ...closeWithTelegraph(3, 750),
+            ...closeWithTelegraph(4, 1000),
     ];
 
     await runPattern(steps);
   }
 
 
-  async function runPattern4() {
+  async function runPattern3b() {
     const steps = [
-      { t: 0, row: 5, to: 1, duration: 250 },
-      { t: 250, row: 4, to: 1, duration: 250 },
-      { t: 500, row: 3, to: 1, duration: 250 },
-      { t: 750, row: 2, to: 1, duration: 250 },
-      { t: 1000, row: 1, to: 1, duration: 250 },
+      ...closeWithTelegraph(5, 0),
+      ...closeWithTelegraph(4, 250),
+      ...closeWithTelegraph(3, 500),
+      ...closeWithTelegraph(2, 750),
+      ...closeWithTelegraph(1, 1000),
     ];
 
     await runPattern(steps);
@@ -424,11 +468,11 @@
   document.getElementById("pattern2").addEventListener("click", () => {
     runPattern2();
   });
-  document.getElementById("pattern3").addEventListener("click", () => {
-    runPattern3();
+  document.getElementById("pattern3a").addEventListener("click", () => {
+    runPattern3a();
   });
-  document.getElementById("pattern4").addEventListener("click", () => {
-    runPattern4();
+  document.getElementById("pattern3b").addEventListener("click", () => {
+    runPattern3b();
   });
 
   window.addEventListener("keydown", (e) => {
